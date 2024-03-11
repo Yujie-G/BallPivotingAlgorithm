@@ -1,4 +1,7 @@
 import unittest
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from bpa import BPA
 
 
@@ -47,9 +50,9 @@ class TestBPA(unittest.TestCase):
         bpa.visualizer.draw_with_normals(normals_size=0.5)
 
     def my_test(self):
-        # bpa = BPA(path='data/large_bunny_with_normals.txt', radius=0.0005, visualizer=False)
-        bpa = BPA(path='data/normals_test.txt', radius=0.2, visualizer=False)
-        bpa.create_mesh(limit_iterations=1000)
+        bpa = BPA(path='data/large_bunny_with_normals.txt', radius=0.0005, visualizer=False)
+        # bpa = BPA(path='data/normals_test.txt', radius=0.2, visualizer=False)
+        bpa.create_mesh() # limit_iterations=1000
         bpa.save_mesh('bunny.obj')
 
 if __name__ == '__main__':

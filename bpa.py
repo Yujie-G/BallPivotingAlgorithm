@@ -38,11 +38,11 @@ class BPA:
         for i, line in enumerate(lines):
             coordinates = line.split()
 
-            if len(coordinates) is 3:
+            if len(coordinates) == 3:
                 p = Point(float(coordinates[0]), float(coordinates[1]), float(coordinates[2]), id=i)
                 points.append(p)
 
-            elif len(coordinates) is 6:
+            elif len(coordinates) == 6:
                 p = Point(float(coordinates[0]), float(coordinates[1]), float(coordinates[2]), id=i)
                 normal = [float(coordinates[3]), float(coordinates[4]), float(coordinates[5])]
                 p.normal = normal
@@ -146,7 +146,7 @@ class BPA:
                 _, edges, last_point_index = self.find_seed_triangle(first_point_index=first_point_index)
                 first_point_index = last_point_index
 
-                if edges is None or edges is -1:
+                if edges is None or edges == -1:
                     return
 
                 if self.visualizer is not None:
@@ -558,3 +558,16 @@ class BPA:
 
         return len(intersection) > 0
 
+    def save_mesh(self, path: str):
+        """
+        Save the mesh to a  obj file.
+
+        :param path: The path to save the mesh.
+        :return: None.
+        """
+        with open(path, "w") as f:
+            for point in self.grid.all_points:
+                f.write(f"v {point.x} {point.y} {point.z}\n")
+            for triangle in self.grid.triangles:
+                f.write(f"f {triangle[0].id + 1} {triangle[1].id + 1} {triangle[2].id + 1}\n")
+        f.close()

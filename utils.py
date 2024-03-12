@@ -70,7 +70,7 @@ def calc_min_max_angle_of_triangle(e1, e2, e3) -> (float, float):
 def encode_cell(x, y, z):
     """
     Encode 3 numbers into a single one.
-
+    Assuming each coordinate is no more than 255.
     :param x: First number.
     :param y: Second number.
     :param z: Third number.

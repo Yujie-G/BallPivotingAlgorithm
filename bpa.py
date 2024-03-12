@@ -9,14 +9,16 @@ from edge import Edge
 from visualizer import Visualizer
 import utils
 
-SAVE_EPOCH = 1000
+SAVE_EPOCH = 1000 # save model per 1000 iterations
 INFINITY = np.inf
+
 
 class BPA:
     def __init__(self, path, radius, visualizer=False, num_workers=1):
         self.first_free_point_index = 0
         self.num_points_i_tried_to_seed_from = 0
-        self.save_path = os.path.join('output',path.split(os.sep)[-1].split('.')[0], f'r{radius}')
+        self.save_path = os.path.join('output', path.split(
+            os.sep)[-1].split('.')[0], f'r{radius}')
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
         self.model_name = path.split(os.sep)[-1].split('.')[0]
@@ -93,15 +95,12 @@ class BPA:
         :param p2: Second point.
         :return: The third point.
         """
-        triangle_points = []
+        triangle_points = set()
         third_point = None
 
         for triangle_edge in triangle_edges:
-            first_point, second_point = triangle_edge.p1, triangle_edge.p2
-            triangle_points.append(first_point)
-            triangle_points.append(second_point)
-
-        triangle_points = set(triangle_points)
+            triangle_points.add(triangle_edge.p1)
+            triangle_points.add(triangle_edge.p2)
 
         for point in triangle_points:
             if point.id != p1.id and point.id != p2.id:
@@ -161,7 +160,7 @@ class BPA:
 
                 tried_to_expand_counter += 1
                 pbar.update(1)
-                if(pbar.n % SAVE_EPOCH == 0):
+                if pbar.n % SAVE_EPOCH == 0:
                     self.save_mesh(f'{self.save_path}/it{pbar.n}.obj')
                 i = 0
 
@@ -170,7 +169,7 @@ class BPA:
                     e1, e2 = self.expand_triangle(edges[i], edges)
                     tried_to_expand_counter += 1
                     pbar.update(1)
-                    if(pbar.n % SAVE_EPOCH == 0):
+                    if pbar.n % SAVE_EPOCH == 0:
                         self.save_mesh(f'{self.save_path}/it{pbar.n}.obj')
 
                     if e1 is not None and e2 is not None:
@@ -188,21 +187,21 @@ class BPA:
                         i += 1
         self.save_mesh(f'{self.save_path}/final_result.obj')
 
-    def find_seed_triangle(self, first_point_index=0, num_recursion_calls=0) -> Tuple[int, Tuple]:
+    def find_seed_triangle(self, first_point_index=0, num_recursion_calls=0):
         """
         Find seed triangle.
 
         :param first_point_index: First index the algorithm will try to find seed triangle from.
         :param num_recursion_calls: Number of recursion calls for the recursion stop condition. You should not pass to
         this function anything beside 0 in this parameter.
-        :return: None.
+        :return: flag, edges:Tuple(edge1, eg2, eg3), first_point_index. flag in [-1, 1] == [fail, success]
         """
         if num_recursion_calls > len(self.points):
-            print("i was here")
+            # print("i was here")
             return -1, -1, -1
 
         # Find a free point.
-        #while first_point_index < len(self.points)-1 and self.points[first_point_index].is_used:
+        # while first_point_index < len(self.points)-1 and self.points[first_point_index].is_used:
         #    first_point_index += 1
 
         if first_point_index >= len(self.points) - 1:
@@ -229,15 +228,15 @@ class BPA:
 
         # For each other point, find all points that are in 2r distance from that other point.
         for p2 in p1_neighbor_points:
-            if p2.is_used:
-                #continue
-                pass
+            # if p2.is_used:
+            #     # continue
+            #     pass
 
             if p2.x == p1.x and p2.y == p1.y and p2.z == p1.z:
                 continue
 
             # Find all points that are on 2r distance from p1 and p2
-            intersect_cells = list(set(p1.neighbor_nodes) & set(p2.neighbor_nodes))
+            intersect_cells = list(set(p1.neighbor_nodes)& set(p2.neighbor_nodes))
             possible_points = []
 
             for cell in intersect_cells:
@@ -254,10 +253,10 @@ class BPA:
             LIMIT_POINTS = 5
             possible_points = possible_points[:LIMIT_POINTS]
 
-            for i, p3 in enumerate(possible_points):
-                if p3.is_used:
-                    #continue
-                    pass
+            for _, p3 in enumerate(possible_points):
+                # if p3.is_used:
+                #     # continue
+                #     pass
 
                 if (p3.x == p1.x and p3.y == p1.y and p3.z == p1.z) or (p2.x == p3.x and p2.y == p3.y and p2.z
                                                                         == p3.z):
@@ -281,11 +280,11 @@ class BPA:
                                                                (e.p1.id == p3.id)
                                                                and (e.p2.id == p1.id))]
                     p1_and_p2_already_connected = [e for e in self.grid.edges if ((e.p1.id == p1.id)
-                                                    and (e.p2.id == p2.id)) or ((e.p1.id == p2.id)
-                                                    and (e.p2.id == p1.id))]
+                                                                                  and (e.p2.id == p2.id)) or ((e.p1.id == p2.id)
+                                                                                                              and (e.p2.id == p1.id))]
                     p2_and_p3_already_connected = [e for e in self.grid.edges if ((e.p1.id == p2.id)
-                                                    and (e.p2.id == p3.id)) or ((e.p1.id == p3.id)
-                                                    and (e.p2.id == p2.id))]
+                                                                                  and (e.p2.id == p3.id)) or ((e.p1.id == p3.id)
+                                                                                                              and (e.p2.id == p2.id))]
                     e1 = None
                     e2 = None
                     e3 = None
@@ -296,11 +295,14 @@ class BPA:
 
                     # Check if one of the new edges might close another triangle in the mesh.
                     are_p1_p3_closing_another_triangle_in_the_mesh = \
-                        self.is_there_a_path_between_two_points(p1, p3, point_of_triangle_we_creating=p2)
+                        self.is_there_a_path_between_two_points(
+                            p1, p3, point_of_triangle_we_creating=p2)
                     are_p2_p3_closing_another_triangle_in_the_mesh = \
-                        self.is_there_a_path_between_two_points(p2, p3, point_of_triangle_we_creating=p1)
+                        self.is_there_a_path_between_two_points(
+                            p2, p3, point_of_triangle_we_creating=p1)
                     are_p1_p2_closing_another_triangle_in_the_mesh = \
-                        self.is_there_a_path_between_two_points(p1, p2, point_of_triangle_we_creating=p3)
+                        self.is_there_a_path_between_two_points(
+                            p1, p2, point_of_triangle_we_creating=p3)
 
                     if e1 is None:
                         e1 = Edge(p1, p3)
@@ -384,7 +386,7 @@ class BPA:
 
                 # If a sphere's radius is smaller than the radius of the incircle of a triangle, the sphere can fit into
                 # the triangle.
-                t = utils.calc_incircle_radius(p1, p2, p3)
+                # t = utils.calc_incircle_radius(p1, p2, p3)
                 if self.radius <= utils.calc_incircle_radius(p1, p2, p3):
                     # Calculate new triangle's normal.
                     v1 = [p2.x - p1.x, p2.y - p1.y, p2.z - p1.z]
@@ -392,10 +394,10 @@ class BPA:
                     new_triangle_normal = np.cross(v1, v2)
 
                     # Check if the normal of the triangle is on the same direction with other points normals.
-                    if np.dot(new_triangle_normal, p1.normal) < 0 and np.dot(new_triangle_normal, p2.normal) < 0:
-                        # TODO: Fix this! need to check if the vertices order is anti-clockwise, and if so, change the
-                        #  vector order.
-                        pass
+                    if np.dot(new_triangle_normal, p1.normal) < 0:
+                        p2, p3 = p3, p2
+                        v1 = [p2.x - p1.x, p2.y - p1.y, p2.z - p1.z]
+                        v2 = [p3.x - p1.x, p3.y - p1.y, p3.z - p1.z]
 
                     e1 = None
                     e2 = None
@@ -511,64 +513,29 @@ class BPA:
         :param edge: The edge we are looking at.
         :return: List of the triangles this edge is in them.
         """
-        possible_triangles = []
 
-        for triangle in self.grid.triangles:
-            if edge.p1 in triangle and edge.p2 in triangle:
-                third_point = [p for p in triangle if p.id != edge.p1.id and p.id != edge.p2.id]
-
-                if len(third_point) > 0:
-                    third_point = third_point[0]
-                    possible_triangles.append([edge.p1, edge.p2, third_point])
+        possible_triangles = [triangle for triangle in self.grid.triangles if edge.p1 in triangle and edge.p2 in triangle]
 
         return possible_triangles
 
     def is_there_a_path_between_two_points(self, p1, p2, point_of_triangle_we_creating):
         """
-        Check if there is a path between two gicen points.
+        Check if there is a path between two given points.
 
         :param p1: First point we check.
         :param p2: Second point we check.
         :param point_of_triangle_we_creating: Third point of a triangle these 2 points are in.
-        :return:
+        :return: True if there is a path, False otherwise.
         """
-        edges_first_point_int = []
-        edges_second_point_int = []
-        points_first_edges = []
-        points_second_edges = []
+        edges_containP1 = [e for e in self.grid.edges if p1.id in [e.p1.id, e.p2.id]]
+        edges_containP2 = [e for e in self.grid.edges if p2.id in [e.p1.id, e.p2.id]]
 
-        for e in self.grid.edges:
-            if p1.id == e.p1.id or p1.id == e.p2.id:
-                edges_first_point_int.append(e)
+        points_edges1 = [p.id for e in edges_containP1 for p in [e.p1, e.p2] if p.id != p1.id]
+        points_edges2 = [p.id for e in edges_containP2 for p in [e.p1, e.p2] if p.id != p2.id]
 
-            if p2.id == e.p1.id or p2.id == e.p2.id:
-                edges_second_point_int.append(e)
-
-        for e in edges_first_point_int:
-            points_first_edges.append(e.p1.id)
-            points_first_edges.append(e.p2.id)
-
-        for e in edges_second_point_int:
-            points_second_edges.append(e.p1.id)
-            points_second_edges.append(e.p2.id)
-
-        points_first_edges = set(points_first_edges)
-
-        if p1.id in points_first_edges:
-            points_first_edges.remove(p1.id)
-
-        points_second_edges = set(points_second_edges)
-
-        if p2.id in points_second_edges:
-            points_second_edges.remove(p2.id)
-
-        intersection = set(points_first_edges & points_second_edges)
-        if point_of_triangle_we_creating.id in intersection:
-            # I already know these two points have a path, because they are part of a triangle. Remove that third point
-            # to find out if there are multiple routes between the points.
-            intersection.remove(point_of_triangle_we_creating.id)
-
-        return len(intersection) > 0
+        intersection = set(points_edges1) & set(points_edges2)
+        len_of_intersection = len(intersection)
+        return len_of_intersection > 1 if point_of_triangle_we_creating.id in intersection else len_of_intersection > 0
 
     def save_mesh(self, path: str):
         """

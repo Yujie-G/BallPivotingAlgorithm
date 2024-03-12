@@ -58,7 +58,10 @@ class Grid:
                  /
                 z
             '''
-
+            # resize whole model into [-1, 1] cube
+            point.x = (point.x - min_x) / self.bounding_box_size * 2 - 1
+            point.y = (point.y - min_y) / self.bounding_box_size * 2 - 1
+            point.z = (point.z - min_z) / self.bounding_box_size * 2 - 1
             x_cell = int((point.x // self.cell_size) * self.cell_size)
             y_cell = int((point.y // self.cell_size) * self.cell_size)
             z_cell = int((point.z // self.cell_size) * self.cell_size)
@@ -72,6 +75,7 @@ class Grid:
                 self.cells[code] = []
 
             self.cells[code].append(point)
+
 
     def get_cell_points(self, cell_code):
         points = []

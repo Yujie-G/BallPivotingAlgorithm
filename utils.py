@@ -60,9 +60,9 @@ def calc_min_max_angle_of_triangle(e1, e2, e3) -> (float, float):
     v2 = [e2.p1.x - e2.p2.x, e2.p1.y - e2.p2.y, e2.p1.z - e2.p2.z]
     v3 = [e3.p1.x - e3.p2.x, e3.p1.y - e3.p2.y, e3.p1.z - e3.p2.z]
 
-    angle1 = np.arccos((np.dot(v1, v2))/(np.linalg.norm(v1) * np.linalg.norm(v2))) * (180 / np.pi)
-    angle2 = np.arccos((np.dot(v1, v3))/(np.linalg.norm(v1) * np.linalg.norm(v3))) * (180 / np.pi)
-    angle3 = np.arccos((np.dot(v2, v3))/(np.linalg.norm(v2) * np.linalg.norm(v3))) * (180 / np.pi)
+    angle1 = np.arccos(np.clip((np.dot(v1, v2))/(np.linalg.norm(v1) * np.linalg.norm(v2)),-1,1)) * (180 / np.pi)
+    angle2 = np.arccos(np.clip((np.dot(v1, v3))/(np.linalg.norm(v1) * np.linalg.norm(v3)),-1,1)) * (180 / np.pi)
+    angle3 = np.arccos(np.clip((np.dot(v2, v3))/(np.linalg.norm(v2) * np.linalg.norm(v3)),-1,1)) * (180 / np.pi)
 
     return min(angle1, angle2, angle3), max(angle1, angle2, angle3)
 

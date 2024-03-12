@@ -1,11 +1,14 @@
 # Ball-Pivoting-Algorithm
-Python implementation of the ball-pivoting algorithm (BPA), which was published in 1999 by Bernardini  [[1]](#1). Some ideas in
-this implementation were inspired by the implementation of Digne, which was published in 2014 [[2]](#2).
+
+
+Python implementation of the ball-pivoting algorithm (BPA), which was published in 1999 by Bernardini  [[1]](#1). The code implements are inspired by Lotemn102 (2021). Ball-Pivoting-Algorithm [GitHub repository](https://github.com/Lotemn102/Ball-Pivoting-Algorithm.git)
+
+## Algorithm Overview
+
 <p align="center">
   <img src="images/figure1.png" width="250">
 </p>
 
-## Algorithm Overview
 This algorithm solves the problem of reconstructing mesh surface from a 3D point cloud. The main assumption this algorithm is
 based on is the following: Given three vertices, and a ball of radius `r`, the three vertices form a triangle if the ball is getting "caught" and settle 
 between the points, without containing any other point.
@@ -16,7 +19,7 @@ Choosing the right `r` promises no other point is contained in the formed triang
 - **Expanding triangle** - The ball pivots from each edge in the seed triangle, looking for a third point. It pivots until it gets
 "caught" in the triangle formed by the edge and the third point. A new triangle is formed, and the algorithm
 tries to expand from it. This process continues until the ball can't find any point to expand to.
-  
+
 At this point, the algorithm looks for a new seed triangle, and the process described above starts all over.
 
 The following figures demonstrates those two steps. 
@@ -77,9 +80,6 @@ Consists of 3 coordinates, the normal in this point, the cell node it's sitting 
 ### Edge
 Consists of 2 Point objects.
 
-## Multithreading
-Initially i implemented a multi-threaded version of the algorithm. I knew it won't improve the algorithm's running time due to Python's GIL, that prevents
-making use of more than one CPU core to run threads in parallel, but i thought it might improve the algorithm's mesh quality if i run simultaneously multiple threads in different parts of the object. It didn't improved the algorithm's quality. I think a better idea would be the implement the algorithm using CUDA and [Numba](http://numba.pydata.org/)'s JIT, but it's not trivial and requires some work.
 
 ## Complexity
 Finding a seed costs <img src="https://latex.codecogs.com/gif.latex?O(n^2logn)" width="6%"/> time. We iterate through all points.
@@ -101,22 +101,8 @@ direction as the points.
 
 At the worst case, the algorithm fails to expand the triangle everytime and has to find a new seed, making the total
 run time complexity <img src="https://latex.codecogs.com/gif.latex?O(n^3logn)" width="6%"/> . This scenario is unlikely.
-I ignore in this section the time required for visualization.
 
-## Visualizer
-I've created a visualizer for the algorithm using the open-source library Open3D [[3]](#3). The visualizer updates it's rendering 
-after a seed triangle is found, or an expanding triangle is found. An example of the visualizer is shown in the examples section.
-I've also added normal visualization for debugging the data generation. An example for that is shown in the
-following figure. 
-
-<p align="center">
-  <img src="images/figure7.PNG" width="300">
-</p>
-
-<p align="center">Stansford's bunny with normals</p>
-
-
-## Dataset
+## Input format
 This algorithm expects to get as input `.txt` file in the following pattern:
 > x y z nx ny nz
 > 
@@ -124,73 +110,26 @@ Where `x`, `y` and `z` are the point's coordinates, and `nx`, `ny` and `nz` are 
 In order to generate the data to test the algorithm, i've downloaded 3D objects in .obj format [[4]](#4), extracted the points, and 
 extracted each point's normal based on one of the facets it belongs to. Examples of the data are in the `data` folder. Code for generating new data is in `data_generator.py`.
 
-## How to Run
+## How to run the code
+
 ### Requirements
 - Python>=3.7
-- open3d>=0.7.0.0
 - numpy>=1.20.1
 
-### Available Functions
-- **create_mesh()**: Takes an optional argument `limit_iterations`, that limits the number of iterations of the algorithm. Generates 
-a mesh. Must be called after initializing the BPA object.
-  
-    Example:
-    ```python
-    from bpa import BPA
-    
-    bpa = BPA(path='bunny_with_normals.txt', radius=0.005, visualizer=True)
-    bpa.create_mesh(limit_iterations=1000)
-    ```
-- **visualizer.draw_with_normals()**: Takes an optional argument `percentage` that limits the number of points that their normal
-will be drawn. If set to 100, all normals will be drawn. Default value is set to 10. Another argument is `normals_size` that defines the drawn normal's size. 
-  Default value is set to 1.
-  
-    Example:
-    ```python
-    from bpa import BPA
-    
-    bpa = BPA(path='bunny_with_normals.txt', radius=0.005, visualizer=True)
-    bpa.visualizer.draw_with_normals(percentage=20, normals_size=2)
-    ```
+### Running the main.py
 
-## Example
-An example of Stansford's bunny is in [here](https://www.youtube.com/watch?v=M7yjUFE5mTI):
+```bash
+python main.py -i data/bunny.txt -r 0.1
+```
 
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=M7yjUFE5mTI">
-    <img src="images/result_video_bait.png" width="350">
-   </a>
-</p>
+### utils
+
+- `data_generator.py` - Generates data from .obj files.
+- `bpa.py` - The main implementation of the algorithm, including the grid and the data structures and save the mesh to a .obj file.
+
+## Reconstruction Results
 
 
-<p align="center">
-  <img src="images/result1.png" width="250">
-</p>
-
-<p align="center">
-  <img src="images/result2.png" width="250">
-</p>
-
-Red triangles are seed triangles, and green triangles are expanding triangles.
-
-## Known Issues & TODOs
-- Holes! - As you can see in the example, the algorithm fails to reach a full mesh, and many "holes" are left.
-- Overlapping triangles - I have reduced the number of overlapping expanding triangles by checking that the third
-  point we expand to is not in same side of the edge as the third point of the triangle we expand. For example, suppose we are
-  expanding the orange triangle:
-  <p align="center">
-    <img src="images/figure4.png" width="200">
-  </p>
-  
-  `e` is the edge we pivot on. Suppose these are the algorithm sees the point `p'`.
-  I make sure the it won't pick it since `p'` in the same side of `e` as `p`. This does not apply to the seed
-  triangles. I couldn't think of a way to identify those overlapping cases at the moment.
-- Triangles vertices are not saved in clock-wise order, which makes it difficult later in exporting the mesh as `.obj` file.
-- Generate `.obj` file out of the result mesh.
-- Find a criteria for choosing the initial radius.
-- Pre-check if the point cloud is "dense enough".
-- Find a metric to evaluate how well the constructed mesh is.
-- Implement cuda support.
 
 ## References
 <a id="1">[1]</a>  [The Ball-Pivoting Algorithm for Surface Reconstruction](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=817351), by F. Bernardini, J. Mittleman and H. Rushmeier, 1999.

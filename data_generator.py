@@ -1,12 +1,16 @@
 import numpy as np
 from point import Point
+import sys
+import os
 
 """
 Models are taken from here: https://github.com/alecjacobson/common-3d-test-models
 """
 
 if __name__ == "__main__":
-    f = open("teapot.obj")
+    file_path = ' '.join(sys.argv[1:]) if len(sys.argv) > 1 else None# first argument is the file path
+    model_name = file_path.split(os.sep)[-1].split(".")[0]
+    f = open(file_path, 'r')
     lines = f.readlines()
     f.close()
 
@@ -17,16 +21,20 @@ if __name__ == "__main__":
 
     for line in lines:
         splitted = line.split(" ")
+        # print(splitted)
 
         for i, element in enumerate(splitted):
             if "\n" in element:
                 splitted[i] = element[:-1]
+            # for obj files with texture {f a/b/c}
+            if "/" in element:
+                splitted[i] = element.split("/")[0]
 
-        if splitted != [] and 'v' in splitted[0]:
+        if splitted != [] and 'v' == splitted[0]:
             p = Point(x=float(splitted[1])*1, y=float(splitted[2])*1, z=float(splitted[3])*1, id=1)
             points.append(p)
 
-        if splitted != [] and 'f' in splitted[0]:
+        if splitted != [] and 'f' == splitted[0]:
             p = Point(x=int(splitted[1]), y=int(splitted[2]), z=int(splitted[3]), id=1)
             facets.append(p)
 
@@ -47,7 +55,7 @@ if __name__ == "__main__":
         if p3 not in points_and_normals.keys():
             points_and_normals[p3] = normal
 
-    f = open("output.txt", 'w')
+    f = open(os.path.join('data', model_name + '.txt'), 'w')
 
     for k, v in points_and_normals.items():
         f.write(str(k.x) + " " + str(k.y) + " " + str(k.z) + " " + str(v[0]) + " " + str(v[1]) + " " + str(v[2]) + "\n")

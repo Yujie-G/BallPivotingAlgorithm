@@ -129,7 +129,9 @@ python main.py -i data/bunny.txt -r 0.1
 
 ## Reconstruction Results
 
-
+![bunny](images/res/bunny_mini.jpg)
+![spot](images/res/spot-it7000.jpg)
+![teapot](images/res/teapot-it7000.jpg)
 
 ## References
 <a id="1">[1]</a>  [The Ball-Pivoting Algorithm for Surface Reconstruction](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=817351), by F. Bernardini, J. Mittleman and H. Rushmeier, 1999.

@@ -1,6 +1,7 @@
 from typing import List, Tuple
 from tqdm import tqdm
 import numpy as np
+import os
 
 from grid import Grid
 from point import Point
@@ -8,12 +9,17 @@ from edge import Edge
 from visualizer import Visualizer
 import utils
 
+SAVE_EPOCH = 1000
 INFINITY = np.inf
 
 class BPA:
     def __init__(self, path, radius, visualizer=False, num_workers=1):
         self.first_free_point_index = 0
         self.num_points_i_tried_to_seed_from = 0
+        self.save_path = os.path.join('output',path.split(os.sep)[-1].split('.')[0], f'r{radius}')
+        if not os.path.exists(self.save_path):
+            os.makedirs(self.save_path)
+        self.model_name = path.split(os.sep)[-1].split('.')[0]
         self.points = self.read_points(path)
         self.radius = radius
         self.grid = Grid(points=self.points, radius=radius)
@@ -130,7 +136,7 @@ class BPA:
 
         return np.sign(np.dot(plane_normal, v1)) == np.sign(np.dot(plane_normal, v3))
 
-    def create_mesh(self,  limit_iterations: int = INFINITY, first_point_index: int = 0):
+    def create_mesh(self,  limit_iterations: int, first_point_index: int = 0):
         """
         Create mesh from the points.
 
@@ -139,7 +145,7 @@ class BPA:
         :return: None
         """
         tried_to_expand_counter = 0
-
+        limit_iterations = INFINITY if limit_iterations is None else limit_iterations
         with tqdm(total=limit_iterations) as pbar:
             while 1 and tried_to_expand_counter < limit_iterations:
                 # Find a seed triangle.
@@ -147,6 +153,7 @@ class BPA:
                 first_point_index = last_point_index
 
                 if edges is None or edges == -1:
+                    self.save_mesh(f'{self.save_path}/final_result.obj')
                     return
 
                 if self.visualizer is not None:
@@ -154,6 +161,8 @@ class BPA:
 
                 tried_to_expand_counter += 1
                 pbar.update(1)
+                if(pbar.n % SAVE_EPOCH == 0):
+                    self.save_mesh(f'{self.save_path}/it{pbar.n}.obj')
                 i = 0
 
                 # Try to expand from each edge.
@@ -161,6 +170,8 @@ class BPA:
                     e1, e2 = self.expand_triangle(edges[i], edges)
                     tried_to_expand_counter += 1
                     pbar.update(1)
+                    if(pbar.n % SAVE_EPOCH == 0):
+                        self.save_mesh(f'{self.save_path}/it{pbar.n}.obj')
 
                     if e1 is not None and e2 is not None:
                         edges = [e1, e2]
@@ -175,6 +186,7 @@ class BPA:
                                                        color='green')
                     else:
                         i += 1
+        self.save_mesh(f'{self.save_path}/final_result.obj')
 
     def find_seed_triangle(self, first_point_index=0, num_recursion_calls=0) -> Tuple[int, Tuple]:
         """
@@ -189,7 +201,151 @@ class BPA:
             print("i was here")
             return -1, -1, -1
 
-        # Rest of the code...
+        # Find a free point.
+        #while first_point_index < len(self.points)-1 and self.points[first_point_index].is_used:
+        #    first_point_index += 1
+
+        if first_point_index >= len(self.points) - 1:
+            first_point_index = 0
+
+        p1 = self.points[first_point_index]
+        p1_neighbor_points = []
+
+        # Find all points in 2r distance from that point.
+        for cell in p1.neighbor_nodes:
+            p1_neighbor_points.extend(self.grid.get_cell_points(cell))
+
+        # TODO: Don't know why it appends all points twice in the previous loop?
+        p1_neighbor_points = set(p1_neighbor_points)
+
+        # Sort points by distance from p1.
+        dists = [utils.calc_distance_points(p1, p2) for p2 in p1_neighbor_points]
+        p1_neighbor_points = [x for _, x in sorted(zip(dists, p1_neighbor_points))]
+
+        # For better performance. If we couldn't find a close point to expand to, it's better just to find new
+        # seed than getting a far point.
+        LIMIT_POINTS = 6
+        p1_neighbor_points = p1_neighbor_points[:LIMIT_POINTS]
+
+        # For each other point, find all points that are in 2r distance from that other point.
+        for p2 in p1_neighbor_points:
+            if p2.is_used:
+                #continue
+                pass
+
+            if p2.x == p1.x and p2.y == p1.y and p2.z == p1.z:
+                continue
+
+            # Find all points that are on 2r distance from p1 and p2
+            intersect_cells = list(set(p1.neighbor_nodes) & set(p2.neighbor_nodes))
+            possible_points = []
+
+            for cell in intersect_cells:
+                possible_points.extend(self.grid.get_cell_points(cell))
+
+            # Sort points by distance from p2.
+            dists_p2 = [utils.calc_distance_points(p2, p3) for p3 in possible_points]
+            dist_p1 = [utils.calc_distance_points(p1, p3) for p3 in possible_points]
+            dists = [dist_p1[i] + dists_p2[i] for i in range(len(dist_p1))]
+            possible_points = [x for _, x in sorted(zip(dists, possible_points))]
+
+            # For better performance. If we couldn't find a close point to expand to, it's better just to find new
+            # seed than getting a far point.
+            LIMIT_POINTS = 5
+            possible_points = possible_points[:LIMIT_POINTS]
+
+            for i, p3 in enumerate(possible_points):
+                if p3.is_used:
+                    #continue
+                    pass
+
+                if (p3.x == p1.x and p3.y == p1.y and p3.z == p1.z) or (p2.x == p3.x and p2.y == p3.y and p2.z
+                                                                        == p3.z):
+                    continue
+
+                # For each three points we got, check if a sphere with a radius of r cant be fitted inside the
+                # triangle.
+                if self.radius <= utils.calc_incircle_radius(p1, p2, p3):
+                    # Calculate triangle's normal.
+                    v1 = [p2.x - p1.x, p2.y - p1.y, p2.z - p1.z]
+                    v2 = [p3.x - p1.x, p3.y - p1.y, p3.z - p1.z]
+                    triangle_normal = np.cross(v1, v2)
+
+                    # Check if the normal of the triangle is on the same direction with points normals.
+                    if np.dot(triangle_normal, p1.normal) < 0:
+                        continue
+
+                    # Check if two of the points are already connected.
+                    p1_and_p3_already_connected = [e for e in self.grid.edges if ((e.p1.id == p1.id)
+                                                                                  and (e.p2.id == p3.id)) or (
+                                                               (e.p1.id == p3.id)
+                                                               and (e.p2.id == p1.id))]
+                    p1_and_p2_already_connected = [e for e in self.grid.edges if ((e.p1.id == p1.id)
+                                                    and (e.p2.id == p2.id)) or ((e.p1.id == p2.id)
+                                                    and (e.p2.id == p1.id))]
+                    p2_and_p3_already_connected = [e for e in self.grid.edges if ((e.p1.id == p2.id)
+                                                    and (e.p2.id == p3.id)) or ((e.p1.id == p3.id)
+                                                    and (e.p2.id == p2.id))]
+                    e1 = None
+                    e2 = None
+                    e3 = None
+
+                    if len(p1_and_p3_already_connected) > 0 or len(p1_and_p2_already_connected) > 0 or\
+                            len(p2_and_p3_already_connected) > 0:
+                        continue
+
+                    # Check if one of the new edges might close another triangle in the mesh.
+                    are_p1_p3_closing_another_triangle_in_the_mesh = \
+                        self.is_there_a_path_between_two_points(p1, p3, point_of_triangle_we_creating=p2)
+                    are_p2_p3_closing_another_triangle_in_the_mesh = \
+                        self.is_there_a_path_between_two_points(p2, p3, point_of_triangle_we_creating=p1)
+                    are_p1_p2_closing_another_triangle_in_the_mesh = \
+                        self.is_there_a_path_between_two_points(p1, p2, point_of_triangle_we_creating=p3)
+
+                    if e1 is None:
+                        e1 = Edge(p1, p3)
+                        e1.num_triangles_this_edge_is_in += 1
+
+                        if are_p1_p3_closing_another_triangle_in_the_mesh:
+                            e1.num_triangles_this_edge_is_in += 1
+
+                    if e2 is None:
+                        e2 = Edge(p1, p2)
+                        e2.num_triangles_this_edge_is_in += 1
+
+                        if are_p1_p2_closing_another_triangle_in_the_mesh:
+                            e2.num_triangles_this_edge_is_in += 1
+
+                    if e3 is None:
+                        e3 = Edge(p2, p3)
+                        e3.num_triangles_this_edge_is_in += 1
+
+                        if are_p2_p3_closing_another_triangle_in_the_mesh:
+                            e3.num_triangles_this_edge_is_in += 1
+
+                    # Get rid of these extreme acute or obtuse triangles.
+                    min_angle, max_angle = utils.calc_min_max_angle_of_triangle(e1, e2, e3)
+                    if max_angle > 170 or min_angle < 20:
+                        continue
+
+                    self.grid.edges.append(e1)
+                    self.grid.edges.append(e2)
+                    self.grid.edges.append(e3)
+
+                    triangle = sorted(list({e1.p1, e1.p2, e2.p1, e2.p2, e3.p1, e3.p2}))
+                    self.grid.triangles.append(triangle)
+
+                    # Move the points to the end of the list.
+                    self.first_free_point_index += 1
+
+                    p1.is_used = True
+                    p2.is_used = True
+                    p3.is_used = True
+
+                    return 1, (e1, e2, e3), first_point_index
+
+        # Else, find another free point and start over.
+        return self.find_seed_triangle(first_point_index=first_point_index+1, num_recursion_calls=num_recursion_calls+1)
 
     def expand_triangle(self, edge: Edge, triangle_edges: List[Edge]) -> Tuple[Edge, Edge]:
         """

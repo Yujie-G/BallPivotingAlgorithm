@@ -17,16 +17,16 @@ class Grid:
             self.init_with_data(points)
 
     def init_with_data(self, list_of_points):
-        min_x, max_x, min_y, max_y, min_z, max_z = 0, 0, 0, 0, 0, 0
+        min_x, max_x, min_y, max_y, min_z, max_z = float('inf'),float('-inf'),float('inf'),float('-inf'),float('inf'),float('-inf')
 
         # Find boundaries for the bounding box of the entire data.
         for point in list_of_points:
-            min_x = point.x if point.x < min_x else min_x
-            max_x = point.x if point.x > max_x else max_x
-            min_y = point.y if point.y < min_y else min_y
-            max_y = point.y if point.y > max_y else max_y
-            min_z = point.z if point.z < min_z else min_z
-            max_z = point.z if point.z > max_z else max_z
+            min_x = min(point.x, min_x)
+            max_x = max(point.x, max_x)
+            min_y = min(point.y, min_y)
+            max_y = max(point.y, max_y)
+            min_z = min(point.z, min_z)
+            max_z = max(point.z, max_z)
 
         x = max_x - min_x
         y = max_y - min_y
